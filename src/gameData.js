@@ -39,17 +39,17 @@ export const COST_MULTIPLIER_FROM_DAY = 3; // 3日目以降1.2倍
 export const MARKET_INFO = [
   {
     day: 1, weekday: '月',
-    event: '通常営業',
-    eventKey: 'normal',
-    memo: 'まずは標準的な需要が見込まれます。',
-    eventCoeff: { default: 1.0 },
+    event: '通常営業（まだ知られていない）',
+    eventKey: 'normal_low',
+    memo: 'まだカフェが知られていないため、来客は少なめです。',
+    eventCoeff: { default: 0.70 },
   },
   {
     day: 2, weekday: '火',
-    event: '通常営業',
-    eventKey: 'normal',
-    memo: '前日の結果を見て、仕入れと価格を調整しましょう。',
-    eventCoeff: { default: 1.0 },
+    event: '通常営業（知られてきた）',
+    eventKey: 'normal_mid',
+    memo: '口コミで少しずつ知られてきました。昨日より来客が増えそうです。',
+    eventCoeff: { default: 0.80 },
   },
   {
     day: 3, weekday: '水',
