@@ -55,6 +55,7 @@ export default function ResultScreen({ gameState, onNext, onShowHistory }) {
               <th>商品</th>
               <th>仕入数</th>
               <th>在庫</th>
+              <th>需要</th>
               <th>販売数</th>
               <th>売れ残り</th>
               <th>廃棄</th>
@@ -70,6 +71,7 @@ export default function ResultScreen({ gameState, onNext, onShowHistory }) {
                 <td>{r.productName}</td>
                 <td>{r.purchaseQty}</td>
                 <td>{r.availableStock}</td>
+                <td style={{ color: '#2563eb', fontWeight: 'bold' }}>{r.demand}</td>
                 <td>{r.soldQty}</td>
                 <td style={r.leftover > 0 ? { color: '#d97706', fontWeight: 'bold' } : {}}>{r.leftover}</td>
                 <td style={r.discardQty > 0 ? { color: '#dc2626', fontWeight: 'bold' } : {}}>{r.discardQty}</td>
@@ -84,7 +86,7 @@ export default function ResultScreen({ gameState, onNext, onShowHistory }) {
           </tbody>
           <tfoot>
             <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
-              <td>合計</td><td colSpan={7}></td>
+              <td>合計</td><td colSpan={8}></td>
               <td>¥{result.totalRevenue.toLocaleString()}</td>
               <td>¥{result.totalCost.toLocaleString()}</td>
               <td style={{ color: result.totalProfit >= 0 ? '#16a34a' : '#dc2626' }}>

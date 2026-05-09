@@ -178,7 +178,7 @@ export default function FinalScreen({ gameState, onRestart, onShowHistory }) {
               <table>
                 <thead>
                   <tr>
-                    <th>商品</th><th>仕入</th><th>在庫</th><th>販売</th><th>廃棄</th>
+                    <th>商品</th><th>仕入</th><th>在庫</th><th>需要</th><th>販売</th><th>廃棄</th>
                     <th>価格</th><th>売上</th><th>粗利</th>
                   </tr>
                 </thead>
@@ -188,6 +188,7 @@ export default function FinalScreen({ gameState, onRestart, onShowHistory }) {
                       <td>{r.productName}</td>
                       <td>{r.purchaseQty}</td>
                       <td>{r.availableStock}</td>
+                      <td style={{ color: '#2563eb', fontWeight: 'bold' }}>{r.demand}</td>
                       <td>{r.soldQty}</td>
                       <td style={r.discardQty > 0 ? { color: '#dc2626', fontWeight: 'bold' } : {}}>{r.discardQty}</td>
                       <td>¥{r.sellingPrice.toLocaleString()}</td>
