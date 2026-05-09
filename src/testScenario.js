@@ -1,4 +1,5 @@
-export const TEST_PASSWORD = 'kkd';
+// パスワード "kkd" の SHA-256 ハッシュ（ソースコードに平文を残さないため）
+export const TEST_PASSWORD_HASH = '68c07b6bf4f591095ad1c43c065a801822a6c9cdd8e1536413df05c9fc573643';
 export const TEST_SHOP_NAME = 'テスト店舗';
 
 // 7日分の仕入れシナリオ（productId + Price で指定）

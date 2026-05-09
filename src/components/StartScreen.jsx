@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DEFAULT_VARIATION_MAX, DEFAULT_VARIATION_STEP } from '../gameData.js';
-import { TEST_PASSWORD } from '../testScenario.js';
+import { TEST_PASSWORD_HASH } from '../testScenario.js';
 
 export default function StartScreen({ hasSaveData, onStart, onResume, gameConfig, onAutoStart }) {
   const [shopName, setShopName] = useState('');
@@ -12,8 +12,10 @@ export default function StartScreen({ hasSaveData, onStart, onResume, gameConfig
   const [testPassword, setTestPassword] = useState('');
   const [testError, setTestError] = useState('');
 
-  function handleTestStart() {
-    if (testPassword === TEST_PASSWORD) {
+  async function handleTestStart() {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(testPassword));
+    const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    if (hex === TEST_PASSWORD_HASH) {
       setTestError('');
       onAutoStart();
     } else {
