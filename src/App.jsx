@@ -21,9 +21,9 @@ const SCREENS = {
   HISTORY:  'history',
 };
 
-function createInitialState(teamName = '', shopName = '') {
+function createInitialState(shopName = '') {
   return {
-    teamName, shopName,
+    shopName,
     currentDay: 1,
     cash: INITIAL_CASH,
     coffeeStock: 0,
@@ -50,9 +50,9 @@ export default function App() {
     }
   }, [screen, gameState]);
 
-  function handleStart(teamName, shopName) {
+  function handleStart(shopName) {
     clearGame();
-    setGameState(createInitialState(teamName, shopName));
+    setGameState(createInitialState(shopName));
     setScreen(SCREENS.MARKET);
   }
 
@@ -108,7 +108,7 @@ export default function App() {
 
   function handleRestart() {
     clearGame();
-    setGameState(createInitialState());
+    setGameState(createInitialState(''));
     setHasSaveData(false);
     setScreen(SCREENS.START);
   }

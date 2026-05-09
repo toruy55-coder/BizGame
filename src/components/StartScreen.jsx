@@ -1,16 +1,14 @@
 import { useState } from 'react';
 
 export default function StartScreen({ hasSaveData, onStart, onResume }) {
-  const [teamName, setTeamName] = useState('');
   const [shopName, setShopName] = useState('');
   const [error, setError] = useState('');
   const [showResume, setShowResume] = useState(hasSaveData);
 
   function handleStart() {
-    if (!teamName.trim()) { setError('チーム名を入力してください。'); return; }
     if (!shopName.trim()) { setError('店舗名を入力してください。'); return; }
     setError('');
-    onStart(teamName.trim(), shopName.trim());
+    onStart(shopName.trim());
   }
 
   if (showResume) {
@@ -43,18 +41,6 @@ export default function StartScreen({ hasSaveData, onStart, onResume }) {
       </div>
 
       <div className="card">
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold', fontSize: '1.1rem' }}>
-            チーム名
-          </label>
-          <input
-            type="text"
-            value={teamName}
-            onChange={e => setTeamName(e.target.value)}
-            placeholder="例：チームA"
-            style={{ fontSize: '1.2rem', padding: '12px 16px', width: '100%', border: '2px solid #d1d5db', borderRadius: 8, boxSizing: 'border-box' }}
-          />
-        </div>
         <div style={{ marginBottom: 24 }}>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold', fontSize: '1.1rem' }}>
             店舗名

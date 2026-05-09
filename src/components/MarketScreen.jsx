@@ -21,19 +21,19 @@ export default function MarketScreen({ gameState, onNext, onShowHistory }) {
       </div>
 
       <div className="flex" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-        <div className="card" style={{ flex: 1, minWidth: 140 }}>
+        <div className="card" style={{ flex: 1, minWidth: 160 }}>
           <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>現在資金</div>
           <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>¥{cash.toLocaleString()}</div>
         </div>
-        <div className="card" style={{ flex: 1, minWidth: 140 }}>
-          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>コーヒー在庫</div>
+        <div className="card" style={{ flex: 1, minWidth: 160 }}>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>コーヒー在庫（持ち越し）</div>
           <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{coffeeStock} 個</div>
         </div>
-        <div className="card" style={{ flex: 1, minWidth: 140 }}>
+        <div className="card" style={{ flex: 1, minWidth: 160 }}>
           <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>クッキー在庫（持ち越し）</div>
           <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{cookieCarryoverStock} 個</div>
         </div>
-        <div className="card" style={{ flex: 1, minWidth: 140 }}>
+        <div className="card" style={{ flex: 1, minWidth: 160 }}>
           <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>SNS投稿日数（累計）</div>
           <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{snsCount} 日</div>
         </div>

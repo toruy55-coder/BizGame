@@ -11,7 +11,7 @@ const QUESTIONS = [
 
 export default function FinalScreen({ gameState, onRestart, onShowHistory }) {
   const summary = calcFinalSummary(gameState);
-  const { teamName, shopName, dayResults, reviewMemos, snsHistory } = gameState;
+  const { shopName, dayResults, reviewMemos, snsHistory } = gameState;
   const {
     totalRevenue, totalCost, totalProfit, totalDiscard,
     coffeeStock, productSummary, bestSold, bestProfit, snsCount, managementType,
@@ -24,7 +24,7 @@ export default function FinalScreen({ gameState, onRestart, onShowHistory }) {
   function buildResultText() {
     const lines = [
       '【学内カフェ店長ゲーム v4.1 結果】',
-      `チーム名: ${teamName}`,
+      `店舗名: ${shopName}`,
       `店舗名: ${shopName}`,
       '',
       `初期資金: ¥${INITIAL_CASH.toLocaleString()}`,
@@ -69,7 +69,7 @@ export default function FinalScreen({ gameState, onRestart, onShowHistory }) {
       <p style={{ textAlign: 'center', color: '#555', marginBottom: 24 }}>7日間の営業、お疲れさまでした！</p>
 
       <div className="card" style={{ textAlign: 'center', background: '#eff6ff', borderColor: '#bfdbfe' }}>
-        <div style={{ fontSize: '1rem', color: '#555' }}>{teamName} / {shopName}</div>
+        <div style={{ fontSize: '1rem', color: '#555' }}>{shopName}</div>
         <div style={{ fontSize: '0.9rem', color: '#6b7280', margin: '4px 0' }}>経営タイプ</div>
         <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#2563eb' }}>{managementType}</div>
       </div>
