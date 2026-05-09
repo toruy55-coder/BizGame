@@ -7,7 +7,8 @@ export function getPriceCoefficient(sellingPrice, standardPrice) {
   if (ratio <= 1.00) return 1.00;
   if (ratio <= 1.10) return 0.85;
   if (ratio <= 1.20) return 0.70;
-  return 0.50;
+  if (ratio <= 1.30) return 0.40;
+  return 0;
 }
 
 export function getEventCoefficient(market, productId) {
