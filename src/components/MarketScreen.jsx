@@ -30,7 +30,7 @@ export default function MarketScreen({ gameState, onNext, onShowHistory }) {
           <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{coffeeStock} 個</div>
         </div>
         <div className="card" style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>クッキー在庫（持ち越し）</div>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>クッキー在庫(持越し)</div>
           <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{cookieCarryoverStock} 個</div>
         </div>
         <div className="card" style={{ flex: 1, minWidth: 160 }}>
