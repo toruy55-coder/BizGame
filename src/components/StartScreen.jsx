@@ -1,13 +1,26 @@
 import { useState } from 'react';
 import { DEFAULT_VARIATION_MAX, DEFAULT_VARIATION_STEP } from '../gameData.js';
+import { TEST_PASSWORD } from '../testScenario.js';
 
-export default function StartScreen({ hasSaveData, onStart, onResume, gameConfig }) {
+export default function StartScreen({ hasSaveData, onStart, onResume, gameConfig, onAutoStart }) {
   const [shopName, setShopName] = useState('');
   const [error, setError] = useState('');
   const [showResume, setShowResume] = useState(hasSaveData);
   const [variationMax, setVariationMax] = useState(String(gameConfig?.variationMax ?? DEFAULT_VARIATION_MAX));
   const [variationStep, setVariationStep] = useState(String(gameConfig?.variationStep ?? DEFAULT_VARIATION_STEP));
   const [showSettings, setShowSettings] = useState(false);
+  const [testPassword, setTestPassword] = useState('');
+  const [testError, setTestError] = useState('');
+
+  function handleTestStart() {
+    if (testPassword === TEST_PASSWORD) {
+      setTestError('');
+      onAutoStart();
+    } else {
+      setTestError('パスワードが違います');
+      setTestPassword('');
+    }
+  }
 
   function handleStart() {
     if (!shopName.trim()) { setError('店舗名を入力してください。'); return; }
@@ -69,6 +82,28 @@ export default function StartScreen({ hasSaveData, onStart, onResume, gameConfig
         >
           ゲーム開始
         </button>
+      </div>
+
+      {/* テスト実行（教員専用・パスワード保護） */}
+      <div style={{ marginTop: 48, textAlign: 'center' }}>
+        <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="password"
+            value={testPassword}
+            onChange={e => { setTestPassword(e.target.value); setTestError(''); }}
+            onKeyDown={e => e.key === 'Enter' && handleTestStart()}
+            placeholder="パスワード"
+            style={{ fontSize: '0.78rem', padding: '4px 8px', width: 90, border: '1px solid #d1d5db', borderRadius: 4 }}
+          />
+          <button
+            className="btn btn-secondary"
+            style={{ fontSize: '0.75rem', padding: '4px 12px' }}
+            onClick={handleTestStart}
+          >
+            テスト実行
+          </button>
+        </div>
+        {testError && <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: 4 }}>{testError}</div>}
       </div>
 
       <div style={{ marginTop: 16, textAlign: 'center' }}>

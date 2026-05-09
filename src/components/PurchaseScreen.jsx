@@ -2,15 +2,19 @@ import { useState, useMemo } from 'react';
 import { PRODUCTS, MARKET_INFO } from '../gameData.js';
 import { getCostMultiplier } from '../gameLogic.js';
 
-export default function PurchaseScreen({ gameState, onSubmit, onShowHistory }) {
+export default function PurchaseScreen({ gameState, onSubmit, onShowHistory, autoPlayOrders }) {
   const { currentDay, cash, coffeeStock, cookieCarryoverStock, snsHistory } = gameState;
   const market = MARKET_INFO[currentDay - 1];
   const costMultiplier = getCostMultiplier(currentDay);
   const costUp = costMultiplier > 1;
 
-  const [quantities, setQuantities] = useState(Object.fromEntries(PRODUCTS.map(p => [p.id, '0'])));
-  const [prices, setPrices] = useState(Object.fromEntries(PRODUCTS.map(p => [p.id, String(p.standardPrice)])));
-  const [useSns, setUseSns] = useState(false);
+  const [quantities, setQuantities] = useState(
+    Object.fromEntries(PRODUCTS.map(p => [p.id, autoPlayOrders ? String(autoPlayOrders[p.id] ?? 0) : '0']))
+  );
+  const [prices, setPrices] = useState(
+    Object.fromEntries(PRODUCTS.map(p => [p.id, autoPlayOrders ? String(autoPlayOrders[p.id + 'Price'] ?? p.standardPrice) : String(p.standardPrice)]))
+  );
+  const [useSns, setUseSns] = useState(autoPlayOrders?.sns ?? false);
   const [errors, setErrors] = useState([]);
 
   function getActualCostPrice(product) {
