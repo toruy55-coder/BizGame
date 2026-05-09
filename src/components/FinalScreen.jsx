@@ -9,7 +9,7 @@ const QUESTIONS = [
   '明日は何を変えますか？',
 ];
 
-export default function FinalScreen({ gameState, onRestart }) {
+export default function FinalScreen({ gameState, onRestart, onShowHistory }) {
   const summary = calcFinalSummary(gameState);
   const { teamName, shopName, dayResults, reviewMemos, snsHistory } = gameState;
   const {
@@ -23,7 +23,7 @@ export default function FinalScreen({ gameState, onRestart }) {
 
   function buildResultText() {
     const lines = [
-      '【学内カフェ店長ゲーム v3 結果】',
+      '【学内カフェ店長ゲーム v4.1 結果】',
       `チーム名: ${teamName}`,
       `店舗名: ${shopName}`,
       '',
@@ -41,22 +41,18 @@ export default function FinalScreen({ gameState, onRestart }) {
       '',
       '--- 日別詳細 ---',
     ];
-
     dayResults.forEach((day, di) => {
       const market = MARKET_INFO[di];
       lines.push('');
       lines.push(`【${di + 1}日目（${market.weekday}曜日）】${market.event}`);
-      lines.push(`  SNS: ${day.snsUsed ? '投稿あり' : 'なし'} / ランダム変動: ${Math.round((day.randomCoeff - 1) * 100)}%`);
+      lines.push(`  SNS: ${day.snsUsed ? '投稿あり' : 'なし'}`);
       day.productResults.forEach(r => {
         lines.push(`  ${r.productName}: 仕入${r.purchaseQty} 販売${r.soldQty} 廃棄${r.discardQty} 売上¥${r.revenue.toLocaleString()} 粗利¥${r.grossProfit.toLocaleString()}`);
       });
       lines.push(`  本日利益: ¥${day.totalProfit.toLocaleString()} / 資金: ¥${day.newCash.toLocaleString()}`);
       const memos = reviewMemos[di];
-      if (memos) {
-        memos.forEach((m, qi) => { if (m.trim()) lines.push(`  Q${qi + 1}: ${m.trim()}`); });
-      }
+      if (memos) memos.forEach((m, qi) => { if (m.trim()) lines.push(`  Q${qi + 1}: ${m.trim()}`); });
     });
-
     return lines.join('\n');
   }
 
@@ -70,16 +66,14 @@ export default function FinalScreen({ gameState, onRestart }) {
   return (
     <div className="container">
       <h2 style={{ textAlign: 'center' }}>最終結果</h2>
-      <p style={{ textAlign: 'center', color: '#555', marginBottom: 24 }}>10日間の営業、お疲れさまでした！</p>
+      <p style={{ textAlign: 'center', color: '#555', marginBottom: 24 }}>7日間の営業、お疲れさまでした！</p>
 
-      {/* 経営タイプ */}
       <div className="card" style={{ textAlign: 'center', background: '#eff6ff', borderColor: '#bfdbfe' }}>
         <div style={{ fontSize: '1rem', color: '#555' }}>{teamName} / {shopName}</div>
         <div style={{ fontSize: '0.9rem', color: '#6b7280', margin: '4px 0' }}>経営タイプ</div>
         <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#2563eb' }}>{managementType}</div>
       </div>
 
-      {/* 資金 */}
       <div className="flex" style={{ flexWrap: 'wrap', gap: 12 }}>
         <div className="card" style={{ flex: 1, minWidth: 140 }}>
           <div style={labelStyle}>初期資金</div>
@@ -97,7 +91,6 @@ export default function FinalScreen({ gameState, onRestart }) {
         </div>
       </div>
 
-      {/* 売上・利益 */}
       <div className="flex" style={{ flexWrap: 'wrap', gap: 12 }}>
         <div className="card" style={{ flex: 1, minWidth: 140 }}>
           <div style={labelStyle}>総売上</div>
@@ -113,7 +106,6 @@ export default function FinalScreen({ gameState, onRestart }) {
         </div>
       </div>
 
-      {/* 廃棄・SNS */}
       <div className="flex" style={{ flexWrap: 'wrap', gap: 12 }}>
         <div className="card" style={{ flex: 1, minWidth: 130 }}>
           <div style={labelStyle}>総廃棄数</div>
@@ -125,21 +117,15 @@ export default function FinalScreen({ gameState, onRestart }) {
         </div>
         <div className="card" style={{ flex: 1, minWidth: 130 }}>
           <div style={labelStyle}>SNS投稿日数</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{snsCount} 日 / 10日</div>
+          <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{snsCount} 日 / 7日</div>
         </div>
       </div>
 
-      {/* 商品別サマリ */}
       <div className="card" style={{ marginBottom: 16 }}>
         <strong style={{ display: 'block', marginBottom: 8 }}>商品別集計</strong>
         <table>
           <thead>
-            <tr>
-              <th>商品</th>
-              <th>販売数</th>
-              <th>廃棄数</th>
-              <th>粗利合計</th>
-            </tr>
+            <tr><th>商品</th><th>販売数</th><th>廃棄数</th><th>粗利合計</th></tr>
           </thead>
           <tbody>
             {productSummary.map(p => (
@@ -156,7 +142,6 @@ export default function FinalScreen({ gameState, onRestart }) {
         </table>
       </div>
 
-      {/* ベスト */}
       <div className="flex" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
         <div className="card" style={{ flex: 1, minWidth: 160 }}>
           <div style={labelStyle}>一番売れた商品</div>
@@ -193,14 +178,8 @@ export default function FinalScreen({ gameState, onRestart }) {
               <table>
                 <thead>
                   <tr>
-                    <th>商品</th>
-                    <th>仕入</th>
-                    <th>在庫</th>
-                    <th>販売</th>
-                    <th>廃棄</th>
-                    <th>価格</th>
-                    <th>売上</th>
-                    <th>粗利</th>
+                    <th>商品</th><th>仕入</th><th>在庫</th><th>販売</th><th>廃棄</th>
+                    <th>価格</th><th>売上</th><th>粗利</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -221,8 +200,7 @@ export default function FinalScreen({ gameState, onRestart }) {
                 </tbody>
                 <tfoot>
                   <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
-                    <td>合計</td>
-                    <td colSpan={5}></td>
+                    <td>合計</td><td colSpan={5}></td>
                     <td>¥{day.totalRevenue.toLocaleString()}</td>
                     <td style={{ color: day.totalProfit >= 0 ? '#16a34a' : '#dc2626' }}>
                       ¥{day.totalProfit.toLocaleString()}
@@ -234,10 +212,10 @@ export default function FinalScreen({ gameState, onRestart }) {
 
             <div className="flex" style={{ flexWrap: 'wrap', gap: 6, fontSize: '0.8rem', marginBottom: hasMemo ? 8 : 0 }}>
               <span style={{ background: '#f3f4f6', borderRadius: 4, padding: '2px 8px' }}>
-                SNS: {day.snsUsed ? `投稿あり（×${day.snsCoeff.toFixed(2)}）` : 'なし'}
+                SNS: {day.snsUsed ? '投稿あり' : 'なし'}
               </span>
               <span style={{ background: '#f3f4f6', borderRadius: 4, padding: '2px 8px' }}>
-                ランダム: {randomPct >= 0 ? '+' : ''}{randomPct}%
+                需要変動: {randomPct >= 0 ? '+' : ''}{randomPct}%
               </span>
               <span style={{ background: '#f3f4f6', borderRadius: 4, padding: '2px 8px' }}>
                 本日利益:
@@ -253,9 +231,9 @@ export default function FinalScreen({ gameState, onRestart }) {
                   廃棄 {totalDiscardDay}個
                 </span>
               )}
-              {day.snsBurntOut && (
-                <span style={{ background: '#fee2e2', borderRadius: 4, padding: '2px 8px', color: '#991b1b' }}>
-                  SNS疲れ
+              {day.snsFestivalBonusApplied && (
+                <span style={{ background: '#f0fdf4', borderRadius: 4, padding: '2px 8px', color: '#15803d' }}>
+                  SNS集客効果あり
                 </span>
               )}
             </div>
@@ -276,8 +254,9 @@ export default function FinalScreen({ gameState, onRestart }) {
         );
       })}
 
-      <div className="flex" style={{ justifyContent: 'center', gap: 12, marginTop: 24, marginBottom: 40 }}>
+      <div className="flex" style={{ justifyContent: 'center', flexWrap: 'wrap', gap: 12, marginTop: 24, marginBottom: 40 }}>
         <button className="btn btn-secondary" onClick={handleCopy}>結果をコピー</button>
+        <button className="btn btn-secondary" onClick={onShowHistory}>履歴を見る</button>
         <button className="btn btn-danger" onClick={onRestart}>最初からやり直す</button>
       </div>
     </div>

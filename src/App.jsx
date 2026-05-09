@@ -9,6 +9,7 @@ import PurchaseScreen from './components/PurchaseScreen.jsx';
 import ResultScreen   from './components/ResultScreen.jsx';
 import ReviewScreen   from './components/ReviewScreen.jsx';
 import FinalScreen    from './components/FinalScreen.jsx';
+import HistoryScreen  from './components/HistoryScreen.jsx';
 
 const SCREENS = {
   START:    'start',
@@ -17,17 +18,17 @@ const SCREENS = {
   RESULT:   'result',
   REVIEW:   'review',
   FINAL:    'final',
+  HISTORY:  'history',
 };
 
 function createInitialState(teamName = '', shopName = '') {
   return {
-    teamName,
-    shopName,
+    teamName, shopName,
     currentDay: 1,
     cash: INITIAL_CASH,
     coffeeStock: 0,
-    bakeryCarryoverStock: 0, // 焼き菓子持ち越し
-    snsHistory: [],           // boolean[], インデックス0=1日目
+    cookieCarryoverStock: 0,
+    snsHistory: [],
     dayResults: [],
     reviewMemos: [],
   };
@@ -35,6 +36,7 @@ function createInitialState(teamName = '', shopName = '') {
 
 export default function App() {
   const [screen, setScreen] = useState(SCREENS.START);
+  const [prevScreen, setPrevScreen] = useState(SCREENS.MARKET); // 履歴から戻る先
   const [gameState, setGameState] = useState(createInitialState());
   const [hasSaveData, setHasSaveData] = useState(false);
 
@@ -44,7 +46,7 @@ export default function App() {
 
   useEffect(() => {
     if (screen !== SCREENS.START) {
-      saveGame({ screen, gameState });
+      saveGame({ screen, prevScreen, gameState });
     }
   }, [screen, gameState]);
 
@@ -58,58 +60,48 @@ export default function App() {
     const saved = loadGame();
     if (saved) {
       setGameState(saved.gameState);
+      setPrevScreen(saved.prevScreen || SCREENS.MARKET);
       setScreen(saved.screen || SCREENS.MARKET);
     }
     setHasSaveData(false);
   }
 
-  function handleMarketNext() {
-    setScreen(SCREENS.PURCHASE);
+  function handleShowHistory(fromScreen) {
+    setPrevScreen(fromScreen);
+    setScreen(SCREENS.HISTORY);
   }
 
+  function handleHistoryBack() {
+    setScreen(prevScreen);
+  }
+
+  function handleMarketNext() { setScreen(SCREENS.PURCHASE); }
+
   function handlePurchaseSubmit(orders, useSns) {
-    const { cash, coffeeStock, bakeryCarryoverStock, currentDay, snsHistory } = gameState;
-
-    const result = calcDayResult({
-      cash,
-      coffeeStock,
-      bakeryCarryoverStock,
-      orders,
-      useSns,
-      snsHistory,
-      day: currentDay,
-    });
-
+    const { cash, coffeeStock, cookieCarryoverStock, currentDay, snsHistory } = gameState;
+    const result = calcDayResult({ cash, coffeeStock, cookieCarryoverStock, orders, useSns, snsHistory, day: currentDay });
     const newSnsHistory = [...snsHistory, useSns];
-
     setGameState(prev => ({
       ...prev,
       cash: result.newCash,
       coffeeStock: result.newCoffeeStock,
-      bakeryCarryoverStock: result.newBakeryCarryoverStock,
+      cookieCarryoverStock: result.newCookieCarryoverStock,
       snsHistory: newSnsHistory,
       dayResults: [...prev.dayResults, result],
     }));
     setScreen(SCREENS.RESULT);
   }
 
-  function handleResultNext() {
-    setScreen(SCREENS.REVIEW);
-  }
+  function handleResultNext() { setScreen(SCREENS.REVIEW); }
 
   function handleReviewNext(memos) {
     const { currentDay } = gameState;
     const newMemos = [...gameState.reviewMemos, memos];
-
-    if (currentDay >= 10) {
+    if (currentDay >= 7) {
       setGameState(prev => ({ ...prev, reviewMemos: newMemos }));
       setScreen(SCREENS.FINAL);
     } else {
-      setGameState(prev => ({
-        ...prev,
-        currentDay: prev.currentDay + 1,
-        reviewMemos: newMemos,
-      }));
+      setGameState(prev => ({ ...prev, currentDay: prev.currentDay + 1, reviewMemos: newMemos }));
       setScreen(SCREENS.MARKET);
     }
   }
@@ -123,24 +115,13 @@ export default function App() {
 
   return (
     <>
-      {screen === SCREENS.START && (
-        <StartScreen hasSaveData={hasSaveData} onStart={handleStart} onResume={handleResume} />
-      )}
-      {screen === SCREENS.MARKET && (
-        <MarketScreen gameState={gameState} onNext={handleMarketNext} />
-      )}
-      {screen === SCREENS.PURCHASE && (
-        <PurchaseScreen gameState={gameState} onSubmit={handlePurchaseSubmit} />
-      )}
-      {screen === SCREENS.RESULT && (
-        <ResultScreen gameState={gameState} onNext={handleResultNext} />
-      )}
-      {screen === SCREENS.REVIEW && (
-        <ReviewScreen gameState={gameState} onNext={handleReviewNext} />
-      )}
-      {screen === SCREENS.FINAL && (
-        <FinalScreen gameState={gameState} onRestart={handleRestart} />
-      )}
+      {screen === SCREENS.START    && <StartScreen hasSaveData={hasSaveData} onStart={handleStart} onResume={handleResume} />}
+      {screen === SCREENS.MARKET   && <MarketScreen gameState={gameState} onNext={handleMarketNext} onShowHistory={() => handleShowHistory(SCREENS.MARKET)} />}
+      {screen === SCREENS.PURCHASE && <PurchaseScreen gameState={gameState} onSubmit={handlePurchaseSubmit} onShowHistory={() => handleShowHistory(SCREENS.PURCHASE)} />}
+      {screen === SCREENS.RESULT   && <ResultScreen gameState={gameState} onNext={handleResultNext} onShowHistory={() => handleShowHistory(SCREENS.RESULT)} />}
+      {screen === SCREENS.REVIEW   && <ReviewScreen gameState={gameState} onNext={handleReviewNext} onShowHistory={() => handleShowHistory(SCREENS.REVIEW)} />}
+      {screen === SCREENS.FINAL    && <FinalScreen gameState={gameState} onRestart={handleRestart} onShowHistory={() => handleShowHistory(SCREENS.FINAL)} />}
+      {screen === SCREENS.HISTORY  && <HistoryScreen gameState={gameState} onBack={handleHistoryBack} />}
     </>
   );
 }

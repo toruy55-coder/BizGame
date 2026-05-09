@@ -1,6 +1,5 @@
-import { PRODUCTS, MARKET_INFO } from './gameData.js';
+import { PRODUCTS, MARKET_INFO, COST_MULTIPLIER_FROM_DAY } from './gameData.js';
 
-/** 価格係数 */
 export function getPriceCoefficient(sellingPrice, standardPrice) {
   const ratio = sellingPrice / standardPrice;
   if (ratio <= 0.80) return 1.40;
@@ -11,43 +10,15 @@ export function getPriceCoefficient(sellingPrice, standardPrice) {
   return 0.50;
 }
 
-/** イベント係数（商品別） */
 export function getEventCoefficient(market, productId) {
-  const coeff = market.eventCoeff;
-  return coeff[productId] !== undefined ? coeff[productId] : coeff.default;
+  const c = market.eventCoeff;
+  return c[productId] !== undefined ? c[productId] : c.default;
 }
 
-/**
- * SNS係数を計算する
- * @param {number} day - 現在の日（1-indexed）
- * @param {boolean} useSns - 今日SNSを投稿するか
- * @param {boolean[]} snsHistory - 過去の投稿履歴（0-indexed, [0]=1日目）
- */
-export function getSnsCoefficient(day, useSns, snsHistory) {
-  // 1〜5日目: 即時効果なし
-  if (day <= 5) return 1.0;
-
-  // 8連続SNS疲れチェック（9日目・10日目）
-  const isBurntOut = snsHistory.slice(0, 8).length === 8 && snsHistory.slice(0, 8).every(Boolean);
-
-  if (day === 6) {
-    // 1〜5日目のSNS投稿回数で判定
-    const count = snsHistory.slice(0, 5).filter(Boolean).length;
-    return count >= 4 ? 1.2 : 0.5;
-  }
-
-  if (day === 7) {
-    return useSns ? 1.1 : 1.0;
-  }
-
-  if (day >= 8 && day <= 10) {
-    let coeff = useSns ? (1.0 + Math.random() * 0.15) : 1.0;
-    if (day === 9 && isBurntOut) coeff *= 0.7;
-    if (day === 10 && isBurntOut) coeff *= 0.8;
-    return coeff;
-  }
-
-  return 1.0;
+/** SNS係数（6日目以外の通常SNS効果） */
+export function getSnsCoefficient(useSns) {
+  if (!useSns) return 1.0;
+  return 1.0 + Math.random() * 0.10; // 1.00〜1.10
 }
 
 /** ランダム係数 0.85〜1.15 */
@@ -55,62 +26,44 @@ export function getRandomCoefficient() {
   return 0.85 + Math.random() * 0.30;
 }
 
+/** 仕入単価倍率 */
+export function getCostMultiplier(day) {
+  return day >= COST_MULTIPLIER_FROM_DAY ? 1.2 : 1.0;
+}
+
 /**
  * 1日の営業結果を計算する
  */
-export function calcDayResult({ cash, coffeeStock, bakeryCarryoverStock, orders, useSns, snsHistory, day }) {
+export function calcDayResult({ cash, coffeeStock, cookieCarryoverStock, orders, useSns, snsHistory, day }) {
   const market = MARKET_INFO[day - 1];
   const randomCoeff = getRandomCoefficient();
-  const snsCoeff = getSnsCoefficient(day, useSns, snsHistory);
+  const snsCoeff = getSnsCoefficient(useSns); // 6日目も通常SNS係数を使う（売上補正は別途）
+  const costMultiplier = getCostMultiplier(day);
 
-  // SNS疲れかどうか
-  const isBurntOut = snsHistory.slice(0, 8).length === 8 && snsHistory.slice(0, 8).every(Boolean);
-  const snsBurntOut = (day === 9 || day === 10) && isBurntOut;
-
-  // 焼き菓子の販売可能在庫（持ち越し + 今日の仕入）
-  const bakeryOrder = orders.find(o => o.productId === 'bakery') || { quantity: 0, sellingPrice: 300 };
-  const bakeryPurchaseQty = Number(bakeryOrder.quantity) || 0;
-  const bakeryAvailableStock = bakeryCarryoverStock + bakeryPurchaseQty;
-
-  let bakeryActualSold = 0; // 後でstrawberry計算に使う
+  // クッキーの販売可能在庫
+  const cookieOrder = orders.find(o => o.productId === 'cookie') || { quantity: 0, sellingPrice: 300 };
+  const cookiePurchaseQty = Number(cookieOrder.quantity) || 0;
+  const cookieAvailableStock = cookieCarryoverStock + cookiePurchaseQty;
 
   const productResults = PRODUCTS.map((product) => {
     const order = orders.find(o => o.productId === product.id) || { quantity: 0, sellingPrice: product.standardPrice };
     const purchaseQty = Number(order.quantity) || 0;
     const sellingPrice = Number(order.sellingPrice) || product.standardPrice;
+    const actualCostPrice = product.costPrice * costMultiplier;
 
-    // 実効仕入単価（3日目は1.2倍）
-    const actualCostPrice = product.costPrice * market.costMultiplier;
-
-    // 販売可能在庫
     let availableStock;
     if (product.id === 'coffee') {
       availableStock = coffeeStock + purchaseQty;
-    } else if (product.id === 'bakery') {
-      availableStock = bakeryAvailableStock;
+    } else if (product.id === 'cookie') {
+      availableStock = cookieAvailableStock;
     } else {
-      availableStock = purchaseQty; // sandwich, strawberry
+      availableStock = purchaseQty;
     }
 
-    // 係数
     const priceCoeff = getPriceCoefficient(sellingPrice, product.standardPrice);
     const eventCoeff = getEventCoefficient(market, product.id);
-
-    // 需要計算
-    let demand = Math.floor(product.baseDemand * priceCoeff * eventCoeff * snsCoeff * randomCoeff);
-
-    // いちごトッピングは焼き菓子販売数を超えない
-    let soldQty;
-    if (product.id === 'strawberry') {
-      soldQty = Math.min(availableStock, demand, bakeryActualSold);
-    } else {
-      soldQty = Math.min(availableStock, demand);
-    }
-
-    if (product.id === 'bakery') {
-      bakeryActualSold = soldQty;
-    }
-
+    const demand = Math.floor(product.baseDemand * priceCoeff * eventCoeff * snsCoeff * randomCoeff);
+    const soldQty = Math.min(availableStock, demand);
     const leftover = availableStock - soldQty;
     const revenue = sellingPrice * soldQty;
     const costTotal = actualCostPrice * purchaseQty;
@@ -118,10 +71,11 @@ export function calcDayResult({ cash, coffeeStock, bakeryCarryoverStock, orders,
 
     // 廃棄数
     let discardQty = 0;
-    if (product.id === 'sandwich' || product.id === 'strawberry') {
-      discardQty = leftover; // 当日廃棄
-    } else if (product.id === 'bakery') {
-      discardQty = Math.min(leftover, bakeryCarryoverStock); // 持ち越し分だけ廃棄
+    if (product.id === 'sandwich') {
+      discardQty = leftover;
+    } else if (product.id === 'cookie') {
+      // 持ち越し分の売れ残り → 廃棄
+      discardQty = Math.min(leftover, cookieCarryoverStock);
     }
 
     return {
@@ -143,8 +97,17 @@ export function calcDayResult({ cash, coffeeStock, bakeryCarryoverStock, orders,
     };
   });
 
-  const totalRevenue = productResults.reduce((s, r) => s + r.revenue, 0);
+  // 合計計算
+  let totalRevenue = productResults.reduce((s, r) => s + r.revenue, 0);
   const totalCost = productResults.reduce((s, r) => s + r.costTotal, 0);
+
+  // 6日目のSNS売上補正（需要ではなく売上に掛ける）
+  const snsCountDays1to5 = snsHistory.slice(0, 5).filter(Boolean).length;
+  const snsFestivalBonusApplied = day === 6 && snsCountDays1to5 >= 4;
+  if (snsFestivalBonusApplied) {
+    totalRevenue = Math.round(totalRevenue * 1.2);
+  }
+
   const totalProfit = totalRevenue - totalCost;
   const newCash = cash - totalCost + totalRevenue;
 
@@ -152,11 +115,11 @@ export function calcDayResult({ cash, coffeeStock, bakeryCarryoverStock, orders,
   const coffeeResult = productResults.find(r => r.productId === 'coffee');
   const newCoffeeStock = coffeeResult ? coffeeResult.leftover : 0;
 
-  const bakeryResult = productResults.find(r => r.productId === 'bakery');
-  // 今日仕入れた分の売れ残りだけ翌日持ち越し
-  const bakeryTodaySoldFromNew = Math.max(0, bakeryActualSold - bakeryCarryoverStock);
-  const bakeryTodayLeftover = bakeryPurchaseQty - bakeryTodaySoldFromNew;
-  const newBakeryCarryoverStock = Math.max(0, bakeryTodayLeftover);
+  // クッキーの翌日持ち越し（今日仕入れた分の売れ残りのみ）
+  const cookieSoldFromCarryover = Math.min(cookieCarryoverStock, productResults.find(r => r.productId === 'cookie')?.soldQty || 0);
+  const cookieSoldFromToday = (productResults.find(r => r.productId === 'cookie')?.soldQty || 0) - cookieSoldFromCarryover;
+  const cookieTodayLeftover = Math.max(0, cookiePurchaseQty - Math.max(0, cookieSoldFromToday));
+  const newCookieCarryoverStock = cookieTodayLeftover;
 
   return {
     day,
@@ -167,25 +130,24 @@ export function calcDayResult({ cash, coffeeStock, bakeryCarryoverStock, orders,
     totalProfit,
     newCash,
     newCoffeeStock,
-    newBakeryCarryoverStock,
+    newCookieCarryoverStock,
     snsUsed: useSns,
     snsCoeff,
     randomCoeff,
-    snsBurntOut,
+    snsFestivalBonusApplied,
+    costMultiplier,
   };
 }
 
-/** 経営タイプ判定 */
 export function getManagementType(totalProfit, totalDiscard) {
-  const highProfit = totalProfit > 20000;
-  const highDiscard = totalDiscard > 30;
+  const highProfit = totalProfit > 15000;
+  const highDiscard = totalDiscard > 20;
   if (highProfit && !highDiscard) return 'バランス型の店長';
   if (highProfit && highDiscard) return '攻め型の店長';
   if (!highProfit && !highDiscard) return '慎重型の店長';
   return '売上重視型の店長';
 }
 
-/** 最終サマリー計算 */
 export function calcFinalSummary(gameState) {
   const { cash, dayResults, coffeeStock } = gameState;
 
@@ -196,38 +158,29 @@ export function calcFinalSummary(gameState) {
     (s, d) => s + d.productResults.reduce((ss, r) => ss + r.discardQty, 0), 0
   );
 
-  const productSummary = ['coffee', 'sandwich', 'bakery', 'strawberry'].map(pid => {
+  const productSummary = PRODUCTS.map(product => {
     const totalSold = dayResults.reduce((s, d) => {
-      const r = d.productResults.find(r => r.productId === pid);
+      const r = d.productResults.find(r => r.productId === product.id);
       return s + (r ? r.soldQty : 0);
     }, 0);
     const totalGross = dayResults.reduce((s, d) => {
-      const r = d.productResults.find(r => r.productId === pid);
+      const r = d.productResults.find(r => r.productId === product.id);
       return s + (r ? r.grossProfit : 0);
     }, 0);
     const totalDiscardProd = dayResults.reduce((s, d) => {
-      const r = d.productResults.find(r => r.productId === pid);
+      const r = d.productResults.find(r => r.productId === product.id);
       return s + (r ? r.discardQty : 0);
     }, 0);
-    const name = { coffee: 'コーヒー', sandwich: 'サンドイッチ', bakery: '焼き菓子', strawberry: 'いちごトッピング' }[pid];
-    return { productId: pid, productName: name, totalSold, totalGross, totalDiscard: totalDiscardProd };
+    return { productId: product.id, productName: product.name, totalSold, totalGross, totalDiscard: totalDiscardProd };
   });
 
   const bestSold = productSummary.reduce((a, b) => a.totalSold >= b.totalSold ? a : b);
   const bestProfit = productSummary.reduce((a, b) => a.totalGross >= b.totalGross ? a : b);
-
   const snsCount = (gameState.snsHistory || []).filter(Boolean).length;
 
   return {
-    totalRevenue,
-    totalCost,
-    totalProfit,
-    totalDiscard,
-    coffeeStock,
-    productSummary,
-    bestSold,
-    bestProfit,
-    snsCount,
+    totalRevenue, totalCost, totalProfit, totalDiscard,
+    coffeeStock, productSummary, bestSold, bestProfit, snsCount,
     managementType: getManagementType(totalProfit, totalDiscard),
   };
 }

@@ -1,5 +1,5 @@
 export const INITIAL_CASH = 50000;
-export const GAME_DAYS = 10;
+export const GAME_DAYS = 7;
 
 export const PRODUCTS = [
   {
@@ -8,7 +8,7 @@ export const PRODUCTS = [
     costPrice: 30,
     standardPrice: 100,
     baseDemand: 60,
-    stockType: 'carryover', // 翌日以降持ち越し可
+    stockType: 'carryover',
   },
   {
     id: 'sandwich',
@@ -16,109 +16,71 @@ export const PRODUCTS = [
     costPrice: 180,
     standardPrice: 320,
     baseDemand: 35,
-    stockType: 'daily_discard', // 当日廃棄
+    stockType: 'daily_discard',
   },
   {
-    id: 'bakery',
-    name: '焼き菓子',
+    id: 'cookie',
+    name: 'クッキー',
     costPrice: 150,
     standardPrice: 300,
     baseDemand: 25,
-    stockType: 'two_day', // 翌日まで持ち越し可、翌々日廃棄
-  },
-  {
-    id: 'strawberry',
-    name: 'いちごトッピング',
-    costPrice: 30,
-    standardPrice: 100,
-    baseDemand: 20,
-    stockType: 'daily_discard',
-    dependsOn: 'bakery', // 焼き菓子販売数が上限
+    stockType: 'two_day',
   },
 ];
 
-// 曜日配列（1日目=月曜）
-export const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日', '月', '火', '水'];
+export const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];
+
+// 仕入単価倍率: day>=3 なら1.2倍（App.jsxかgameLogic.jsで計算）
+export const COST_MULTIPLIER_FROM_DAY = 3; // 3日目以降1.2倍
 
 export const MARKET_INFO = [
   {
     day: 1, weekday: '月',
     event: '通常営業',
     eventKey: 'normal',
-    memo: 'まずは標準的な需要が見込まれます。仕入れと価格設定を確認しましょう。',
-    costMultiplier: 1.0,      // 仕入単価倍率
-    eventCoeff: { default: 1.0 }, // 商品別イベント係数
+    memo: 'まずは標準的な需要が見込まれます。',
+    eventCoeff: { default: 1.0 },
   },
   {
     day: 2, weekday: '火',
     event: '通常営業',
     eventKey: 'normal',
-    memo: '前日の結果を参考に、仕入れと価格を調整しましょう。',
-    costMultiplier: 1.0,
+    memo: '前日の結果を見て、仕入れと価格を調整しましょう。',
     eventCoeff: { default: 1.0 },
   },
   {
     day: 3, weekday: '水',
     event: '仕入単価上昇',
     eventKey: 'cost_up',
-    memo: '今日は仕入れコストが1.2倍になっています。価格と数量の判断が重要です。',
-    costMultiplier: 1.2,
+    memo: '仕入単価が上がりました。利益を出すには価格と仕入数の判断が重要です。',
     eventCoeff: { default: 1.0 },
   },
   {
     day: 4, weekday: '木',
     event: '通常営業',
     eventKey: 'normal',
-    memo: '学園祭前にSNSを継続するか判断する日です。',
-    costMultiplier: 1.0,
+    memo: '週末の学園祭に向けて、SNS投稿や仕入れをどうするか考えましょう。',
     eventCoeff: { default: 1.0 },
   },
   {
     day: 5, weekday: '金',
-    event: '学園祭準備・競合店出店',
-    eventKey: 'rival',
-    memo: '学園祭準備で人はいますが、競合店に一部流れています。需要は約70%です。',
-    costMultiplier: 1.0,
-    eventCoeff: { default: 0.7 },
+    event: '学園祭準備',
+    eventKey: 'festival_prep',
+    memo: '学園祭の準備で人の動きが増えています。遅い時間までカフェ利用がありそうです。',
+    eventCoeff: { default: 1.10 },
   },
   {
     day: 6, weekday: '土',
     event: '学園祭1日目',
     eventKey: 'festival1',
-    memo: '学園祭1日目！これまでのSNS発信が集客に大きく影響します。',
-    costMultiplier: 1.0,
-    eventCoeff: { default: 1.2 }, // SNS係数で上書きされる
+    memo: '学園祭が始まりました。来店の増加が見込まれますが、他の出店も多くあります。商品数や価格の判断が大切です。',
+    eventCoeff: { default: 1.25 },
   },
   {
     day: 7, weekday: '日',
     event: '学園祭2日目',
     eventKey: 'festival2',
-    memo: '学園祭2日目。前日の評判も影響しています。',
-    costMultiplier: 1.0,
-    eventCoeff: { default: 1.1 },
-  },
-  {
-    day: 8, weekday: '月',
-    event: '通常営業・学園祭疲れ',
-    eventKey: 'fatigue',
-    memo: '翌週月曜日。学園祭疲れで来店が少なめです。需要は約70%です。',
-    costMultiplier: 1.0,
-    eventCoeff: { default: 0.7 },
-  },
-  {
-    day: 9, weekday: '火',
-    event: 'ゼミ発表会',
-    eventKey: 'seminar',
-    memo: '発表会前後の軽食需要が高まっています。サンドイッチが特に人気です。',
-    costMultiplier: 1.0,
-    eventCoeff: { default: 1.0, sandwich: 1.3 },
-  },
-  {
-    day: 10, weekday: '水',
-    event: 'サークルイベント',
-    eventKey: 'circle',
-    memo: 'サークルイベント参加者の休憩需要があります。コーヒーと焼き菓子が人気です。',
-    costMultiplier: 1.0,
-    eventCoeff: { default: 1.0, coffee: 1.2, bakery: 1.1, strawberry: 1.1 },
+    memo: '学園祭2日目です。前日の結果を見て、仕入れと価格を調整しましょう。',
+    eventCoeff: { default: 1.20 },
   },
 ];
