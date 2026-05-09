@@ -21,9 +21,10 @@ export function getSnsCoefficient(useSns) {
   return 1.0 + Math.random() * 0.10; // 1.00〜1.10
 }
 
-/** ランダム係数 0.85〜1.15 */
+/** ランダム係数 0.60〜1.40（5%刻み） */
 export function getRandomCoefficient() {
-  return 0.85 + Math.random() * 0.30;
+  const steps = Math.floor(Math.random() * 17); // 0〜16
+  return 0.60 + steps * 0.05;
 }
 
 /** 仕入単価倍率 */
