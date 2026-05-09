@@ -1,6 +1,9 @@
 export const INITIAL_CASH = 50000;
 export const GAME_DAYS = 7;
 
+export const DEFAULT_VARIATION_MAX = 40;  // 需要変動の最大幅（%）
+export const DEFAULT_VARIATION_STEP = 5;  // 需要変動の刻み幅（%）
+
 export const PRODUCTS = [
   {
     id: 'coffee',

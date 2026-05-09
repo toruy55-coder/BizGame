@@ -1,14 +1,22 @@
 import { useState } from 'react';
+import { DEFAULT_VARIATION_MAX, DEFAULT_VARIATION_STEP } from '../gameData.js';
 
-export default function StartScreen({ hasSaveData, onStart, onResume }) {
+export default function StartScreen({ hasSaveData, onStart, onResume, gameConfig }) {
   const [shopName, setShopName] = useState('');
   const [error, setError] = useState('');
   const [showResume, setShowResume] = useState(hasSaveData);
+  const [variationMax, setVariationMax] = useState(String(gameConfig?.variationMax ?? DEFAULT_VARIATION_MAX));
+  const [variationStep, setVariationStep] = useState(String(gameConfig?.variationStep ?? DEFAULT_VARIATION_STEP));
+  const [showSettings, setShowSettings] = useState(false);
 
   function handleStart() {
     if (!shopName.trim()) { setError('店舗名を入力してください。'); return; }
+    const max = parseInt(variationMax);
+    const step = parseInt(variationStep);
+    if (!max || max < 5 || max > 100) { setError('需要変動幅は5〜100の整数で入力してください。'); return; }
+    if (!step || step < 1 || step > max) { setError('刻み幅は1以上・変動幅以下の整数で入力してください。'); return; }
     setError('');
-    onStart(shopName.trim());
+    onStart(shopName.trim(), { variationMax: max, variationStep: step });
   }
 
   if (showResume) {
@@ -62,6 +70,50 @@ export default function StartScreen({ hasSaveData, onStart, onResume }) {
           ゲーム開始
         </button>
       </div>
+
+      <div style={{ marginTop: 16, textAlign: 'center' }}>
+        <button
+          className="btn btn-secondary"
+          style={{ fontSize: '0.85rem', padding: '6px 16px' }}
+          onClick={() => setShowSettings(v => !v)}
+        >
+          {showSettings ? '▲ 需要設定を閉じる' : '▼ 需要設定（教員用）'}
+        </button>
+      </div>
+
+      {showSettings && (
+        <div className="card" style={{ marginTop: 8, background: '#fefce8', borderColor: '#fde68a' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: 12, color: '#92400e' }}>需要変動の設定</div>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: 4 }}>
+                変動幅（±%）
+              </label>
+              <input
+                type="number" min="5" max="100" step="5"
+                value={variationMax}
+                onChange={e => setVariationMax(e.target.value)}
+              />
+              <div style={{ fontSize: '0.75rem', color: '#92400e', marginTop: 2 }}>
+                現在：±{variationMax}%（5〜100）
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: 4 }}>
+                刻み幅（%）
+              </label>
+              <input
+                type="number" min="1" max="100" step="1"
+                value={variationStep}
+                onChange={e => setVariationStep(e.target.value)}
+              />
+              <div style={{ fontSize: '0.75rem', color: '#92400e', marginTop: 2 }}>
+                現在：{variationStep}%刻み（1以上）
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -21,10 +21,12 @@ export function getSnsCoefficient(useSns) {
   return 1.0 + Math.random() * 0.10; // 1.00〜1.10
 }
 
-/** ランダム係数 0.60〜1.40（5%刻み） */
-export function getRandomCoefficient() {
-  const steps = Math.floor(Math.random() * 17); // 0〜16
-  return 0.60 + steps * 0.05;
+/** ランダム係数（刻み幅stepPct、±maxPct%） */
+export function getRandomCoefficient(maxPct = 40, stepPct = 5) {
+  const stepsEach = Math.round(maxPct / stepPct); // 片側のステップ数
+  const totalSteps = stepsEach * 2 + 1;
+  const chosen = Math.floor(Math.random() * totalSteps);
+  return 1.0 + ((chosen - stepsEach) * stepPct) / 100;
 }
 
 /** 仕入単価倍率 */
@@ -35,9 +37,9 @@ export function getCostMultiplier(day) {
 /**
  * 1日の営業結果を計算する
  */
-export function calcDayResult({ cash, coffeeStock, cookieCarryoverStock, orders, useSns, snsHistory, day }) {
+export function calcDayResult({ cash, coffeeStock, cookieCarryoverStock, orders, useSns, snsHistory, day, variationMax, variationStep }) {
   const market = MARKET_INFO[day - 1];
-  const randomCoeff = getRandomCoefficient();
+  const randomCoeff = getRandomCoefficient(variationMax, variationStep);
   const snsCoeff = getSnsCoefficient(useSns); // 6日目も通常SNS係数を使う（売上補正は別途）
   const costMultiplier = getCostMultiplier(day);
 

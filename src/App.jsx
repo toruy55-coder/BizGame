@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { INITIAL_CASH, MARKET_INFO } from './gameData.js';
+import { INITIAL_CASH, MARKET_INFO, DEFAULT_VARIATION_MAX, DEFAULT_VARIATION_STEP } from './gameData.js';
 import { calcDayResult } from './gameLogic.js';
 import { saveGame, loadGame, clearGame } from './storage.js';
 
@@ -39,6 +39,7 @@ export default function App() {
   const [prevScreen, setPrevScreen] = useState(SCREENS.MARKET); // 履歴から戻る先
   const [gameState, setGameState] = useState(createInitialState());
   const [hasSaveData, setHasSaveData] = useState(false);
+  const [gameConfig, setGameConfig] = useState({ variationMax: DEFAULT_VARIATION_MAX, variationStep: DEFAULT_VARIATION_STEP });
 
   useEffect(() => {
     if (loadGame()) setHasSaveData(true);
@@ -50,8 +51,9 @@ export default function App() {
     }
   }, [screen, gameState]);
 
-  function handleStart(shopName) {
+  function handleStart(shopName, config) {
     clearGame();
+    setGameConfig(config);
     setGameState(createInitialState(shopName));
     setScreen(SCREENS.MARKET);
   }
@@ -79,7 +81,7 @@ export default function App() {
 
   function handlePurchaseSubmit(orders, useSns) {
     const { cash, coffeeStock, cookieCarryoverStock, currentDay, snsHistory } = gameState;
-    const result = calcDayResult({ cash, coffeeStock, cookieCarryoverStock, orders, useSns, snsHistory, day: currentDay });
+    const result = calcDayResult({ cash, coffeeStock, cookieCarryoverStock, orders, useSns, snsHistory, day: currentDay, variationMax: gameConfig.variationMax, variationStep: gameConfig.variationStep });
     const newSnsHistory = [...snsHistory, useSns];
     setGameState(prev => ({
       ...prev,
@@ -115,7 +117,7 @@ export default function App() {
 
   return (
     <>
-      {screen === SCREENS.START    && <StartScreen hasSaveData={hasSaveData} onStart={handleStart} onResume={handleResume} />}
+      {screen === SCREENS.START    && <StartScreen hasSaveData={hasSaveData} onStart={handleStart} onResume={handleResume} gameConfig={gameConfig} />}
       {screen === SCREENS.MARKET   && <MarketScreen gameState={gameState} onNext={handleMarketNext} onShowHistory={() => handleShowHistory(SCREENS.MARKET)} />}
       {screen === SCREENS.PURCHASE && <PurchaseScreen gameState={gameState} onSubmit={handlePurchaseSubmit} onShowHistory={() => handleShowHistory(SCREENS.PURCHASE)} />}
       {screen === SCREENS.RESULT   && <ResultScreen gameState={gameState} onNext={handleResultNext} onShowHistory={() => handleShowHistory(SCREENS.RESULT)} />}
