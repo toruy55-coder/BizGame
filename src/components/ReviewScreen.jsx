@@ -1,50 +1,61 @@
 import { useState } from 'react';
+import { MARKET_INFO } from '../gameData.js';
 
 const QUESTIONS = [
-  '今日の仕入れ・価格設定で良かった点は何ですか？',
-  '今日の営業で改善できる点・反省点はありますか？',
-  '明日（次の営業日）に向けてどんな工夫をしますか？',
+  '今日、一番うまくいった判断は何ですか？',
+  '仕入れすぎや売れ残りはありましたか？',
+  '価格設定は適切だったと思いますか？',
+  'SNS投稿は今後どうしますか？',
+  '明日は何を変えますか？',
 ];
 
 export default function ReviewScreen({ gameState, onNext }) {
-  const { currentDay } = gameState;
-  const isLastDay = currentDay === 5;
+  const { currentDay, dayResults } = gameState;
+  const [memos, setMemos] = useState(QUESTIONS.map(() => ''));
+  const result = dayResults[dayResults.length - 1];
+  const market = MARKET_INFO[currentDay - 1];
+  const isLastDay = currentDay >= 10;
 
-  const [memos, setMemos] = useState(['', '', '']);
-
-  function updateMemo(index, value) {
-    setMemos((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
+  function setMemo(i, val) {
+    setMemos(prev => { const n = [...prev]; n[i] = val; return n; });
   }
 
-  function handleNext() {
-    onNext(memos);
-  }
+  const totalDiscard = result.productResults.reduce((s, r) => s + r.discardQty, 0);
 
   return (
     <div className="container">
-      <div className="flex-between" style={{ marginBottom: 8 }}>
-        <h2>{currentDay}日目の振り返り</h2>
-        <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>{currentDay} / 5日目</span>
+      <h2>{currentDay}日目（{market.weekday}曜日）振り返り</h2>
+
+      <div className="flex" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <div className="card" style={{ flex: 1, minWidth: 120 }}>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>本日の利益</div>
+          <div className={result.totalProfit >= 0 ? 'profit' : 'loss'} style={{ fontSize: '1.2rem' }}>
+            ¥{result.totalProfit.toLocaleString()}
+          </div>
+        </div>
+        <div className="card" style={{ flex: 1, minWidth: 120 }}>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>本日の廃棄数</div>
+          <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: totalDiscard > 0 ? '#d97706' : '#222' }}>
+            {totalDiscard} 個
+          </div>
+        </div>
+        <div className="card" style={{ flex: 1, minWidth: 120 }}>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>SNS投稿</div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+            {result.snsUsed ? '投稿した' : 'しなかった'}
+          </div>
+        </div>
       </div>
 
-      <p style={{ color: '#555', marginBottom: 16 }}>
-        今日の営業を振り返って、以下の質問に答えてください。（入力は任意です）
-      </p>
-
       {QUESTIONS.map((q, i) => (
-        <div className="card" key={i}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 8 }}>
+        <div key={i} style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 6 }}>
             Q{i + 1}. {q}
           </label>
           <textarea
             value={memos[i]}
-            onChange={(e) => updateMemo(i, e.target.value)}
-            rows={3}
-            placeholder="自由に記入してください…"
+            onChange={e => setMemo(i, e.target.value)}
+            rows={2}
             style={{
               width: '100%',
               padding: 8,
@@ -54,15 +65,14 @@ export default function ReviewScreen({ gameState, onNext }) {
               resize: 'vertical',
               fontFamily: 'sans-serif',
             }}
+            placeholder="（入力任意）"
           />
         </div>
       ))}
 
-      <div style={{ textAlign: 'right', marginTop: 8 }}>
-        <button className="btn btn-primary" onClick={handleNext}>
-          {isLastDay ? '最終結果を見る →' : `${currentDay + 1}日目へ →`}
-        </button>
-      </div>
+      <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => onNext(memos)}>
+        {isLastDay ? '最終結果を見る' : `${currentDay + 1}日目へ進む`}
+      </button>
     </div>
   );
 }

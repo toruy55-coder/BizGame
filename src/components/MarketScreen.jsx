@@ -1,67 +1,70 @@
-import { MARKET_INFO } from '../gameData.js';
+import { MARKET_INFO, INITIAL_CASH } from '../gameData.js';
 
-const WEATHER_EMOJI = {
-  sunny: '☀️',
-  rain: '🌧️',
-  hot: '🔥',
-};
+const WEATHER_ICON = { '月': '📅', '火': '📅', '水': '📅', '木': '📅', '金': '📅', '土': '🎉', '日': '🎉' };
 
 export default function MarketScreen({ gameState, onNext }) {
-  const { currentDay, cash, coffeeStock } = gameState;
+  const { currentDay, cash, coffeeStock, bakeryCarryoverStock, snsHistory } = gameState;
   const market = MARKET_INFO[currentDay - 1];
+  const snsCount = snsHistory.filter(Boolean).length;
+
+  // 6日目はSNS投稿日数でプレビュー
+  let snsNote = '';
+  if (currentDay === 6) {
+    const count = snsHistory.slice(0, 5).filter(Boolean).length;
+    snsNote = count >= 4
+      ? `SNS認知が広がり、需要が1.2倍になりそうです！（${count}日投稿済み）`
+      : `SNS投稿が少なく、需要が0.5倍になりそうです。（${count}日投稿済み）`;
+  }
 
   return (
     <div className="container">
-      <div className="flex-between" style={{ marginBottom: 8 }}>
-        <h2>{currentDay}日目の市場情報</h2>
-        <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>{currentDay} / 5日目</span>
+      <div style={{ marginBottom: 16 }}>
+        <h2 style={{ marginBottom: 4 }}>
+          {currentDay}日目（{market.weekday}曜日）/ 10日間
+        </h2>
+        <div style={{ color: '#555', fontSize: '0.9rem' }}>営業時間：10:00〜17:00</div>
       </div>
 
-      <div className="flex" style={{ marginBottom: 16, flexWrap: 'wrap' }}>
-        <div className="card" style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>現在の資金</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>¥{cash.toLocaleString()}</div>
+      {/* 資金・在庫 */}
+      <div className="flex" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <div className="card" style={{ flex: 1, minWidth: 140 }}>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>現在資金</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>¥{cash.toLocaleString()}</div>
         </div>
-        <div className="card" style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>コーヒー持ち越し在庫</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>{coffeeStock} 個</div>
+        <div className="card" style={{ flex: 1, minWidth: 140 }}>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>コーヒー在庫（持ち越し）</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{coffeeStock} 個</div>
+        </div>
+        <div className="card" style={{ flex: 1, minWidth: 140 }}>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>焼き菓子在庫（持ち越し）</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{bakeryCarryoverStock} 個</div>
+        </div>
+        <div className="card" style={{ flex: 1, minWidth: 140 }}>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>SNS投稿日数（累計）</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{snsCount} 日</div>
         </div>
       </div>
 
-      <div className="card">
-        <h3 style={{ margin: '0 0 12px' }}>本日の情報</h3>
-        <div className="flex" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
-          <div style={{ flex: 1, minWidth: 140 }}>
-            <div style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: 4 }}>天気</div>
-            <div style={{ fontSize: '1.2rem' }}>
-              {WEATHER_EMOJI[market.weatherKey] || '🌤️'} {market.weather}
-            </div>
+      {/* イベント */}
+      <div className="card" style={{ background: '#eff6ff', borderColor: '#bfdbfe', marginBottom: 12 }}>
+        <div style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: 4 }}>今日のイベント</div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: 8 }}>{market.event}</div>
+        <div style={{ fontSize: '0.95rem', color: '#444' }}>{market.memo}</div>
+        {snsNote && (
+          <div style={{ marginTop: 10, padding: '8px 12px', background: '#fef9c3', borderRadius: 6, fontSize: '0.9rem', color: '#854d0e' }}>
+            {snsNote}
           </div>
-          <div style={{ flex: 2, minWidth: 200 }}>
-            <div style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: 4 }}>イベント</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>📅 {market.event}</div>
+        )}
+        {market.costMultiplier > 1 && (
+          <div style={{ marginTop: 10, padding: '8px 12px', background: '#fee2e2', borderRadius: 6, fontSize: '0.9rem', color: '#991b1b' }}>
+            ⚠️ 今日は全商品の仕入単価が {market.costMultiplier} 倍になっています
           </div>
-        </div>
-        <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '10px 14px' }}>
-          <span className="warning">💡 市場メモ：</span> {market.memo}
-        </div>
+        )}
       </div>
 
-      <div className="card" style={{ fontSize: '0.9rem', color: '#555' }}>
-        <strong>ヒント</strong>
-        <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-          <li>天気・イベントによって需要が変わります</li>
-          <li>価格を下げると売れやすくなりますが利益は減ります</li>
-          <li>コーヒーは売れ残っても翌日に持ち越せます</li>
-          <li>サンドイッチ・スイーツは当日限りです</li>
-        </ul>
-      </div>
-
-      <div style={{ textAlign: 'right', marginTop: 16 }}>
-        <button className="btn btn-primary" onClick={onNext}>
-          仕入れ・価格設定へ →
-        </button>
-      </div>
+      <button className="btn btn-primary" style={{ width: '100%' }} onClick={onNext}>
+        仕入れ・価格設定へ
+      </button>
     </div>
   );
 }

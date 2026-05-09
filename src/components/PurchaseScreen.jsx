@@ -1,192 +1,191 @@
 import { useState, useMemo } from 'react';
-import { PRODUCTS } from '../gameData.js';
-import { getPriceCoefficient } from '../gameLogic.js';
-
-function PriceHint({ sellingPrice, standardPrice }) {
-  if (!sellingPrice || !standardPrice) return null;
-  const coeff = getPriceCoefficient(Number(sellingPrice), standardPrice);
-  const pct = Math.round((coeff - 1) * 100);
-  const color = coeff > 1 ? '#16a34a' : coeff < 1 ? '#dc2626' : '#6b7280';
-  const label = coeff > 1 ? `需要 +${pct}%` : coeff < 1 ? `需要 ${pct}%` : '需要 標準';
-  return <span style={{ fontSize: '0.8rem', color }}>{label}</span>;
-}
+import { PRODUCTS, MARKET_INFO } from '../gameData.js';
 
 export default function PurchaseScreen({ gameState, onSubmit }) {
-  const { cash, coffeeStock } = gameState;
+  const { currentDay, cash, coffeeStock, bakeryCarryoverStock } = gameState;
+  const market = MARKET_INFO[currentDay - 1];
 
-  const initOrders = () =>
-    PRODUCTS.map((p) => ({
-      productId: p.id,
-      quantity: 0,
-      sellingPrice: p.standardPrice,
-    }));
-
-  const [orders, setOrders] = useState(initOrders);
+  const [quantities, setQuantities] = useState(
+    Object.fromEntries(PRODUCTS.map(p => [p.id, '0']))
+  );
+  const [prices, setPrices] = useState(
+    Object.fromEntries(PRODUCTS.map(p => [p.id, String(p.standardPrice)]))
+  );
   const [useSns, setUseSns] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState([]);
 
-  function updateOrder(productId, field, value) {
-    setOrders((prev) =>
-      prev.map((o) => (o.productId === productId ? { ...o, [field]: value } : o))
-    );
-    setErrors((prev) => ({ ...prev, [productId]: undefined }));
+  // 実効仕入単価（3日目は1.2倍）
+  function getActualCostPrice(product) {
+    return product.costPrice * market.costMultiplier;
   }
 
+  // 仕入合計
   const totalCost = useMemo(() => {
     return PRODUCTS.reduce((sum, p) => {
-      const order = orders.find((o) => o.productId === p.id);
-      return sum + p.costPrice * (Number(order?.quantity) || 0);
+      const qty = parseInt(quantities[p.id]) || 0;
+      return sum + qty * getActualCostPrice(p);
     }, 0);
-  }, [orders]);
+  }, [quantities, market]);
 
   const remainingCash = cash - totalCost;
 
+  function setQty(id, val) { setQuantities(prev => ({ ...prev, [id]: val })); }
+  function setPrice(id, val) { setPrices(prev => ({ ...prev, [id]: val })); }
+
   function validate() {
-    const newErrors = {};
-    PRODUCTS.forEach((p) => {
-      const order = orders.find((o) => o.productId === p.id);
-      const qty = Number(order?.quantity);
-      const price = Number(order?.sellingPrice);
-      if (qty < 0 || !Number.isInteger(qty)) {
-        newErrors[p.id] = '仕入数は0以上の整数を入力してください';
-      }
-      if (!price || price < 1) {
-        newErrors[p.id] = '販売価格は1以上を入力してください';
-      }
-    });
-    return newErrors;
+    const errs = [];
+    for (const p of PRODUCTS) {
+      const qty = quantities[p.id];
+      const price = prices[p.id];
+      if (!/^\d+$/.test(qty) || parseInt(qty) < 0) errs.push(`${p.name}の仕入数は0以上の整数で入力してください。`);
+      if (!price || parseFloat(price) <= 0) errs.push(`${p.name}の販売価格を入力してください。`);
+    }
+    if (remainingCash < 0) errs.push('現在資金を超えています。仕入数を見直してください。');
+    return errs;
   }
 
   function handleSubmit() {
     const errs = validate();
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
-    if (remainingCash < 0) return;
+    setErrors(errs);
+    if (errs.length > 0) return;
+
+    const orders = PRODUCTS.map(p => ({
+      productId: p.id,
+      quantity: parseInt(quantities[p.id]) || 0,
+      sellingPrice: parseFloat(prices[p.id]) || p.standardPrice,
+    }));
     onSubmit(orders, useSns);
   }
 
+  // いちごトッピング警告
+  const bakeryQty = parseInt(quantities['bakery']) || 0;
+  const strawberryQty = parseInt(quantities['strawberry']) || 0;
+  const bakeryTotal = bakeryCarryoverStock + bakeryQty;
+  const showStrawberryWarning = strawberryQty > 0 && bakeryTotal === 0;
+
   return (
     <div className="container">
-      <div className="flex-between" style={{ marginBottom: 8 }}>
-        <h2>{gameState.currentDay}日目 仕入れ・価格設定</h2>
-        <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>{gameState.currentDay} / 5日目</span>
+      <h2 style={{ marginBottom: 4 }}>{currentDay}日目（{market.weekday}曜日）仕入れ・価格設定</h2>
+      <div style={{ marginBottom: 16, color: '#555', fontSize: '0.9rem' }}>
+        現在資金：<strong>¥{cash.toLocaleString()}</strong>
+        {market.costMultiplier > 1 && (
+          <span style={{ marginLeft: 12, color: '#dc2626', fontWeight: 'bold' }}>
+            ⚠️ 今日は仕入単価 {market.costMultiplier} 倍
+          </span>
+        )}
       </div>
 
-      {PRODUCTS.map((product) => {
-        const order = orders.find((o) => o.productId === product.id);
-        const isCarry = product.carryOver;
-        const carryQty = isCarry ? coffeeStock : 0;
-        const purchaseQty = Number(order?.quantity) || 0;
-        const available = carryQty + purchaseQty;
+      {PRODUCTS.map(product => {
+        const carryStock = product.id === 'coffee' ? coffeeStock
+                         : product.id === 'bakery' ? bakeryCarryoverStock : 0;
+        const actualCost = getActualCostPrice(product);
 
         return (
-          <div className="card" key={product.id}>
-            <div className="flex-between" style={{ marginBottom: 8 }}>
-              <strong style={{ fontSize: '1.1rem' }}>{product.name}</strong>
-              {isCarry && (
-                <span style={{ fontSize: '0.85rem', color: '#2563eb' }}>
-                  ♻️ 持ち越し可能（在庫: {coffeeStock}個）
-                </span>
+          <div key={product.id} className="card" style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div>
+                <strong style={{ fontSize: '1.1rem' }}>{product.name}</strong>
+                <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 2 }}>
+                  {product.id === 'coffee' && '翌日以降も販売可能（賞味期限なし）'}
+                  {product.id === 'sandwich' && '当日廃棄'}
+                  {product.id === 'bakery' && '翌日まで販売可能（翌々日廃棄）'}
+                  {product.id === 'strawberry' && '当日廃棄 ／ 焼き菓子販売数が上限'}
+                </div>
+              </div>
+              {carryStock > 0 && (
+                <div style={{ fontSize: '0.85rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, padding: '2px 8px' }}>
+                  持ち越し {carryStock} 個
+                </div>
               )}
             </div>
 
-            <div className="flex" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 8, fontSize: '0.85rem', color: '#555' }}>
-              <span>仕入単価: <strong>¥{product.costPrice}</strong></span>
-              <span>標準価格: <strong>¥{product.standardPrice}</strong></span>
-              <span>利用可能在庫: <strong>{available}個</strong></span>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: '0.85rem', color: '#555', marginBottom: 10 }}>
+              <div>仕入単価：<strong>¥{actualCost}{market.costMultiplier > 1 ? ` (通常¥${product.costPrice})` : ''}</strong></div>
+              <div>標準販売価格：<strong>¥{product.standardPrice}</strong></div>
+              <div>標準需要：<strong>{product.baseDemand}個</strong></div>
             </div>
 
-            <div className="flex" style={{ flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
-              <div style={{ flex: 1, minWidth: 140 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem' }}>
-                  仕入数（個）
-                </label>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <label style={{ fontSize: '0.85rem', display: 'block', marginBottom: 4 }}>仕入数（個）</label>
                 <input
                   type="number"
                   min="0"
-                  step="1"
-                  value={order?.quantity ?? 0}
-                  onChange={(e) => updateOrder(product.id, 'quantity', e.target.value === '' ? 0 : Number(e.target.value))}
+                  value={quantities[product.id]}
+                  onChange={e => setQty(product.id, e.target.value)}
                 />
-                <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 2 }}>
-                  仕入原価: ¥{(product.costPrice * purchaseQty).toLocaleString()}
-                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 140 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem' }}>
-                  販売価格（円）
-                </label>
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <label style={{ fontSize: '0.85rem', display: 'block', marginBottom: 4 }}>販売価格（円）</label>
                 <input
                   type="number"
                   min="1"
-                  step="10"
-                  value={order?.sellingPrice ?? product.standardPrice}
-                  onChange={(e) => updateOrder(product.id, 'sellingPrice', e.target.value === '' ? '' : Number(e.target.value))}
+                  value={prices[product.id]}
+                  onChange={e => setPrice(product.id, e.target.value)}
                 />
-                <div style={{ marginTop: 2 }}>
-                  <PriceHint sellingPrice={order?.sellingPrice} standardPrice={product.standardPrice} />
-                </div>
               </div>
             </div>
-
-            {errors[product.id] && (
-              <div className="error" style={{ marginTop: 8 }}>{errors[product.id]}</div>
-            )}
           </div>
         );
       })}
 
-      <div className="card">
-        <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontSize: '1rem' }}>
-          <input
-            type="checkbox"
-            checked={useSns}
-            onChange={(e) => setUseSns(e.target.checked)}
-            style={{ width: 20, height: 20, cursor: 'pointer' }}
-          />
-          <span>
-            <strong>SNS投稿する</strong>
-            <span style={{ fontSize: '0.85rem', color: '#6b7280', marginLeft: 8 }}>
-              ランダムで需要が 0〜+20% アップ（効果なしの場合もあり）
-            </span>
-          </span>
-        </label>
-      </div>
-
-      <div className="card flex-between" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <div>
-          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>仕入合計</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>¥{totalCost.toLocaleString()}</div>
-        </div>
-        <div>
-          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>現在資金</div>
-          <div style={{ fontSize: '1.1rem' }}>¥{cash.toLocaleString()}</div>
-        </div>
-        <div>
-          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>残り資金</div>
-          <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: remainingCash < 0 ? '#dc2626' : '#16a34a' }}>
-            ¥{remainingCash.toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      {remainingCash < 0 && (
-        <div className="error" style={{ marginBottom: 12 }}>
-          資金が不足しています。仕入数を減らしてください。
+      {showStrawberryWarning && (
+        <div className="card" style={{ background: '#fef2f2', borderColor: '#fca5a5', marginBottom: 12 }}>
+          <span className="warning">⚠️ いちごトッピングは焼き菓子の販売数を超えて売れません。焼き菓子も仕入れてください。</span>
         </div>
       )}
 
-      <div style={{ textAlign: 'right' }}>
-        <button
-          className="btn btn-primary"
-          onClick={handleSubmit}
-          disabled={remainingCash < 0}
-        >
-          営業開始！
-        </button>
+      {/* SNS */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <input
+            type="checkbox"
+            id="sns"
+            checked={useSns}
+            onChange={e => setUseSns(e.target.checked)}
+            style={{ width: 20, height: 20 }}
+          />
+          <label htmlFor="sns" style={{ fontWeight: 'bold', cursor: 'pointer' }}>
+            今日SNS投稿をする（費用0円）
+          </label>
+        </div>
+        <div style={{ fontSize: '0.85rem', color: '#555', marginTop: 6 }}>
+          {currentDay <= 5
+            ? '1〜5日目のSNS投稿回数が学園祭（6日目）の集客に影響します。'
+            : currentDay === 6
+            ? '今日のSNS投稿は7日目（学園祭2日目）の需要に影響します。'
+            : '投稿すると今日の需要がランダムで最大+15%増加します。'}
+        </div>
       </div>
+
+      {/* 合計 */}
+      <div className="card" style={{ background: remainingCash < 0 ? '#fef2f2' : '#f9fafb', borderColor: remainingCash < 0 ? '#fca5a5' : '#e5e7eb' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span>仕入合計</span>
+          <strong>¥{totalCost.toLocaleString()}</strong>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem' }}>
+          <span>仕入後残り資金</span>
+          <strong style={{ color: remainingCash < 0 ? '#dc2626' : '#16a34a' }}>
+            ¥{remainingCash.toLocaleString()}
+          </strong>
+        </div>
+      </div>
+
+      {errors.length > 0 && (
+        <div className="card" style={{ background: '#fef2f2', borderColor: '#fca5a5' }}>
+          {errors.map((e, i) => <p key={i} className="error" style={{ margin: '2px 0' }}>{e}</p>)}
+        </div>
+      )}
+
+      <button
+        className="btn btn-primary"
+        style={{ width: '100%', marginTop: 8 }}
+        onClick={handleSubmit}
+        disabled={remainingCash < 0}
+      >
+        営業開始
+      </button>
     </div>
   );
 }

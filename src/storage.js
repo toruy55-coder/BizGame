@@ -1,28 +1,22 @@
-const SAVE_KEY = 'bizgame_save';
+const KEY = 'cafe_business_game_v3_state';
 
-export function saveGame(gameState) {
+export function saveGame(data) {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+    localStorage.setItem(KEY, JSON.stringify(data));
   } catch (e) {
-    console.warn('saveGame failed:', e);
+    console.error('保存に失敗しました', e);
   }
 }
 
 export function loadGame() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
+    const raw = localStorage.getItem(KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch (e) {
-    console.warn('loadGame failed:', e);
     return null;
   }
 }
 
 export function clearGame() {
-  try {
-    localStorage.removeItem(SAVE_KEY);
-  } catch (e) {
-    console.warn('clearGame failed:', e);
-  }
+  localStorage.removeItem(KEY);
 }

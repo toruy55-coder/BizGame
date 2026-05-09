@@ -26,6 +26,8 @@ function createInitialState(teamName = '', shopName = '') {
     currentDay: 1,
     cash: INITIAL_CASH,
     coffeeStock: 0,
+    bakeryCarryoverStock: 0, // 焼き菓子持ち越し
+    snsHistory: [],           // boolean[], インデックス0=1日目
     dayResults: [],
     reviewMemos: [],
   };
@@ -37,25 +39,18 @@ export default function App() {
   const [hasSaveData, setHasSaveData] = useState(false);
 
   useEffect(() => {
-    const saved = loadGame();
-    if (saved) {
-      setHasSaveData(true);
-    }
+    if (loadGame()) setHasSaveData(true);
   }, []);
 
-  // ゲーム状態が変わったらLocalStorageに保存
   useEffect(() => {
     if (screen !== SCREENS.START) {
       saveGame({ screen, gameState });
     }
   }, [screen, gameState]);
 
-  // ---- ハンドラ ----
-
   function handleStart(teamName, shopName) {
     clearGame();
-    const newState = createInitialState(teamName, shopName);
-    setGameState(newState);
+    setGameState(createInitialState(teamName, shopName));
     setScreen(SCREENS.MARKET);
   }
 
@@ -73,15 +68,26 @@ export default function App() {
   }
 
   function handlePurchaseSubmit(orders, useSns) {
-    const { cash, coffeeStock, currentDay } = gameState;
-    const market = MARKET_INFO[currentDay - 1];
+    const { cash, coffeeStock, bakeryCarryoverStock, currentDay, snsHistory } = gameState;
 
-    const result = calcDayResult({ cash, coffeeStock, orders, useSns, market });
+    const result = calcDayResult({
+      cash,
+      coffeeStock,
+      bakeryCarryoverStock,
+      orders,
+      useSns,
+      snsHistory,
+      day: currentDay,
+    });
 
-    setGameState((prev) => ({
+    const newSnsHistory = [...snsHistory, useSns];
+
+    setGameState(prev => ({
       ...prev,
       cash: result.newCash,
       coffeeStock: result.newCoffeeStock,
+      bakeryCarryoverStock: result.newBakeryCarryoverStock,
+      snsHistory: newSnsHistory,
       dayResults: [...prev.dayResults, result],
     }));
     setScreen(SCREENS.RESULT);
@@ -95,11 +101,11 @@ export default function App() {
     const { currentDay } = gameState;
     const newMemos = [...gameState.reviewMemos, memos];
 
-    if (currentDay >= 5) {
-      setGameState((prev) => ({ ...prev, reviewMemos: newMemos }));
+    if (currentDay >= 10) {
+      setGameState(prev => ({ ...prev, reviewMemos: newMemos }));
       setScreen(SCREENS.FINAL);
     } else {
-      setGameState((prev) => ({
+      setGameState(prev => ({
         ...prev,
         currentDay: prev.currentDay + 1,
         reviewMemos: newMemos,
@@ -115,46 +121,25 @@ export default function App() {
     setScreen(SCREENS.START);
   }
 
-  // ---- レンダリング ----
-
   return (
     <>
       {screen === SCREENS.START && (
-        <StartScreen
-          hasSaveData={hasSaveData}
-          onStart={handleStart}
-          onResume={handleResume}
-        />
+        <StartScreen hasSaveData={hasSaveData} onStart={handleStart} onResume={handleResume} />
       )}
       {screen === SCREENS.MARKET && (
-        <MarketScreen
-          gameState={gameState}
-          onNext={handleMarketNext}
-        />
+        <MarketScreen gameState={gameState} onNext={handleMarketNext} />
       )}
       {screen === SCREENS.PURCHASE && (
-        <PurchaseScreen
-          gameState={gameState}
-          onSubmit={handlePurchaseSubmit}
-        />
+        <PurchaseScreen gameState={gameState} onSubmit={handlePurchaseSubmit} />
       )}
       {screen === SCREENS.RESULT && (
-        <ResultScreen
-          gameState={gameState}
-          onNext={handleResultNext}
-        />
+        <ResultScreen gameState={gameState} onNext={handleResultNext} />
       )}
       {screen === SCREENS.REVIEW && (
-        <ReviewScreen
-          gameState={gameState}
-          onNext={handleReviewNext}
-        />
+        <ReviewScreen gameState={gameState} onNext={handleReviewNext} />
       )}
       {screen === SCREENS.FINAL && (
-        <FinalScreen
-          gameState={gameState}
-          onRestart={handleRestart}
-        />
+        <FinalScreen gameState={gameState} onRestart={handleRestart} />
       )}
     </>
   );
